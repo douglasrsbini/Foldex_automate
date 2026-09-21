@@ -1,0 +1,18 @@
+import fs from 'fs';
+
+// Gera um SVG vetorizado em proporção 1:1 total (sem bordas vazias)
+const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+  </defs>
+  <!-- Fundo da Pasta Preenchendo 100% da Largura e Altura -->
+  <path d="M40 70 C40 45, 60 30, 85 30 L195 30 C215 30, 230 45, 245 65 L265 95 C275 110, 290 120, 310 120 L427 120 C452 120, 472 140, 472 165 L472 425 C472 455, 450 482, 420 482 L92 482 C62 482, 40 455, 40 425 Z" fill="url(#grad)" />
+  <!-- Raio central branco -->
+  <path d="M285 160 L180 305 L255 305 L225 435 L345 285 L270 285 Z" fill="#ffffff" />
+</svg>`;
+
+fs.writeFileSync('app-icon.svg', svg);
+console.log('SVG gerado com sucesso!');

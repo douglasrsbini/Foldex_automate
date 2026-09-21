@@ -1,0 +1,50 @@
+{
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/v2/crates/tauri-cli/schema.json",
+  "productName": "Foldex",
+  "version": "1.0.0",
+  "identifier": "com.binaver.foldex",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Foldex",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 900,
+        "minHeight": 600,
+        "maximized": true,
+        "center": true,
+        "resizable": true,
+        "decorations": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    },
+    "publisher": "BINAVER Soluções Tecnológicas - Ltda",
+    "shortDescription": "Sistema de Automação, Triagem e Governança de Arquivos",
+    "longDescription": "O Foldex é uma solução de alta performance para organização automatizada de arquivos, governança com trilha de auditoria forense criptografada SHA-256 e compressão nativa local em conformidade com a LGPD.",
+    "copyright": "© 2026 BINAVER Soluções Tecnológicas - Ltda. Todos os direitos reservados."
+  }
+}

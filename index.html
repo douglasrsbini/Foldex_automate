@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="pt-BR" class="h-full">
+  <head>
+    <!-- Metadados Fundamentais e Codificação UTF-8 -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    
+    <!-- Título Oficial da Aplicação -->
+    <title>Binaver Foldex Enterprise</title>
+
+    <!-- Prevenção de FOUC (Flash of Unstyled Content) para o Tema Escuro -->
+    <script>
+      (function () {
+        try {
+          const savedTheme = localStorage.getItem('app_theme');
+          const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (savedTheme === 'Dark' || (!savedTheme && systemPrefersDark)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {
+          console.error('Falha ao pré-carregar preferência de tema:', e);
+        }
+      })();
+    </script>
+
+    <!-- Estilização Global: Scrollbars Customizados, Resets de Seleção e Suporte a Impressão -->
+    <style>
+      /* ==========================================================================
+         1. RESET GERAL E PREVENÇÃO DE COMPORTAMENTOS NATIVOS DE NAVEGADOR
+         ========================================================================== */
+      *, *::before, *::after {
+        box-sizing: border-box;
+      }
+
+      html, body {
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden; /* Mantém a janela desktop fixa sem rolagem global indesejada */
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        user-select: none; /* Desativa seleção de texto estilo página web em ambiente Desktop */
+      }
+
+      /* ==========================================================================
+         2. BARRAS DE ROLAGEM MINIMALISTAS (CUSTOM SCROLLBARS - WEBKIT)
+         ========================================================================== */
+      /* Largura e Altura das Barras de Rolagem */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+
+      /* Trilho da Barra de Rolagem (Fundo Invisível) */
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      /* Cursor/Alça da Barra de Rolagem - Tema Claro (Padrão) */
+      ::-webkit-scrollbar-thumb {
+        background: rgba(100, 116, 139, 0.25); /* Slate translúcido */
+        border-radius: 9999px;
+        transition: background-color 0.2s ease;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(100, 116, 139, 0.45);
+      }
+
+      /* Cursor/Alça da Barra de Rolagem - Tema Escuro */
+      .dark ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.14); /* Branco translúcido */
+        border-radius: 9999px;
+      }
+
+      .dark ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.28);
+      }
+
+      /* Oculta os botões de seta nas extremidades da barra de rolagem */
+      ::-webkit-scrollbar-button {
+        display: none;
+        width: 0;
+        height: 0;
+      }
+
+      /* ==========================================================================
+         3. REGRAS GLOBAIS DE IMPRESSÃO (EXCLUSIVIDADE DOS RELATÓRIOS EM PDF)
+         ========================================================================== */
+      @media print {
+        body {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          background: #ffffff !important;
+          color: #000000 !important;
+        }
+
+        /* Oculta automaticamente qualquer elemento marcado para não sair na impressão */
+        .print-hide {
+          display: none !important;
+        }
+      }
+    </style>
+  </head>
+
+  <body class="bg-[#f8f9fa] dark:bg-[#121214] text-slate-900 dark:text-slate-100">
+    <!-- Ponto de Montagem da Aplicação React / Vite -->
+    <div id="root" class="h-full w-full"></div>
+
+    <!-- Script Principal de Inicialização -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
