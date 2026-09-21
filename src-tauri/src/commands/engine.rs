@@ -2,6 +2,7 @@ use crate::db::schema::get_db_path;
 use crate::models::{AuditLog, DryRunResult, IntegrityReport, LicenseInfo, RuleAction};
 use crate::commands::rules::get_rules;
 use crate::commands::explorer::compress_items_to_zip;
+use crate::services::ocr_engine; // ⚡ INJEÇÃO DO SERVIÇO DE OCR
 use rusqlite::{params, Connection, Result};
 use std::fs;
 use std::io::Read;
@@ -418,11 +419,10 @@ fn resolve_unique_path(dest: PathBuf) -> PathBuf {
     }
 }
 
-// ⚡ MOTOR DE HIGIENIZAÇÃO E REGEX (CORE DA FRENTE B)
 fn apply_filename_hygiene(original_stem: &str, action: &RuleAction) -> String {
     let mut name = original_stem.to_string();
 
-    // 1. Tratamento por Regex (Expressões Regulares)
+    // 1. Tratamento por Regex
     if let (Some(pat), Some(rep)) = (&action.regex_pattern, &action.regex_replacement) {
         if !pat.trim().is_empty() {
             if let Ok(re) = regex::Regex::new(pat) {
@@ -431,7 +431,7 @@ fn apply_filename_hygiene(original_stem: &str, action: &RuleAction) -> String {
         }
     }
 
-    // 2. Remoção de Acentos (Tratamento fonético local leve)
+    // 2. Remoção de Acentos
     if action.clean_accents.unwrap_or(false) {
         name = name
             .replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u")
@@ -461,7 +461,6 @@ fn apply_filename_hygiene(original_stem: &str, action: &RuleAction) -> String {
 fn resolve_destination_path(file: &Path, action: &RuleAction) -> PathBuf {
     let (ano, mes, dia, ext, tipo_doc, filename_original, _, _, _) = extract_file_data(file);
     
-    // ⚡ O motor limpa o nome ANTES de construir o caminho final
     let filename_hygienized = apply_filename_hygiene(&filename_original, action);
 
     let mut resolved = action.target_pattern.clone();
@@ -474,8 +473,6 @@ fn resolve_destination_path(file: &Path, action: &RuleAction) -> PathBuf {
 
     let mut dest_path = PathBuf::from(resolved);
     
-    // Se o padrão terminar com barra (indicando diretório) OU não tiver extensão,
-    // o Rust entende que a regra apenas "Moveu a pasta" e preserva o nome limpo do arquivo com a extensão original.
     if action.target_pattern.ends_with('/') || action.target_pattern.ends_with('\\') || dest_path.extension().is_none() {
         let final_file_name = if ext.is_empty() {
             filename_hygienized
@@ -549,6 +546,10 @@ pub async fn run_simulation(rule_id: i64) -> Result<Vec<DryRunResult>, String> {
                         "COMEÇA COM" => filename_full.to_lowercase().starts_with(&target),
                         "TERMINA COM" => filename_full.to_lowercase().ends_with(&target),
                         _ => filename_full.to_lowercase().contains(&target),
+                    },
+                    // ⚡ MOTOR DE OCR INJETADO AQUI:
+                    "Conteúdo do Documento (OCR)" => {
+                        ocr_engine::file_content_matches_keyword(p, &target)
                     },
                     "Tamanho (Bytes)" => {
                         let target_size = target.parse::<u64>().unwrap_or(0);
@@ -962,7 +963,7 @@ REGRAS:
         { "field_name": "Extensão", "operator": "CONTÉM", "value": "pdf", "logic_connector": "AND" }
     ]
 }
-Campos válidos para field_name: 'Extensão', 'Tipo de Documento (Categoria)', 'Nome do Arquivo'.
+Campos válidos para field_name: 'Extensão', 'Tipo de Documento (Categoria)', 'Nome do Arquivo', 'Conteúdo do Documento (OCR)'.
 Operadores válidos: 'CONTÉM', 'É IGUAL A', 'COMEÇA COM', 'TERMINA COM'.
 "#;
 
@@ -1019,7 +1020,7 @@ DIRETRIZES DE COMPORTAMENTO:
 BASE DE CONHECIMENTO DO SISTEMA FOLDEX:
 - O Foldex é um software local de Governança e Automação de Arquivos (Respeita a LGPD).
 - Telas principais: Construtor de Regras, Explorador de Pastas, Simulação, Auditoria/Rollback, Backups e Configurações.
-- Construtor de Regras: Cria automações lendo extensões, nomes ou datas. Ações possíveis: Mover, Copiar, Zipar, Renomear, Excluir.
+- Construtor de Regras: Cria automações lendo extensões, nomes, datas ou através de OCR lendo o conteúdo dos arquivos PDF e Imagens. Ações possíveis: Mover, Copiar, Zipar, Renomear, Excluir.
 - Auto-Organização (Smart Organize): Um botão mágico que varre uma pasta bagunçada e separa tudo em subpastas automaticamente.
 - Auditoria e Rollback: Todas as ações geram logs inalteráveis com Hash SHA-256. Se o usuário errar, ele pode ir na tela de Auditoria e clicar em "Desfazer (Rollback)".
 - Backups e Cofres: Suporta criptografia AES-256 local e envio para nuvem via servidor FTP.

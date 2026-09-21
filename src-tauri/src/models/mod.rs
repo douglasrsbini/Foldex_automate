@@ -106,3 +106,11 @@ pub struct LicenseInfo {
     pub source_channel: String,
     pub expires_at: Option<String>,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct OcrExtractionResult {
+    pub path: String,
+    pub extracted_text: Option<String>,
+    pub success: bool,
+    pub message: Option<String>,
+}

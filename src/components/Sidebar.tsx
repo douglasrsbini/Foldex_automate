@@ -10,7 +10,8 @@ import {
   UserCheck, 
   ChevronLeft, 
   ChevronRight,
-  Globe 
+  Globe,
+  FileScan // ⚡ Importação do Ícone do OCR
 } from 'lucide-react';
 import { LicenseInfo } from '../types';
 import { useTranslation } from 'react-i18next';
@@ -53,13 +54,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return { label: 'Basic', color: 'emerald' };
   };
 
+  // ⚡ O MENU FOI ATUALIZADO AQUI (Aba "ocr" injetada)
   const navItems = [
-    { id: 'builder', label: t('sidebar.rules'), icon: FolderPlus },
-    { id: 'explorer', label: t('sidebar.explorer'), icon: FolderSearch },
-    { id: 'dryrun', label: t('sidebar.simulation'), icon: PlayCircle },
-    { id: 'history', label: t('sidebar.audit'), icon: History },
-    { id: 'dashboards', label: t('sidebar.reports'), icon: BarChart3 },
-    { id: 'support', label: t('sidebar.support'), icon: Headphones },
+    { id: 'builder', label: t('sidebar.rules') || 'Construtor de Regras', icon: FolderPlus },
+    { id: 'explorer', label: t('sidebar.explorer') || 'Explorador de Pastas', icon: FolderSearch },
+    { id: 'dryrun', label: t('sidebar.simulation') || 'Simulação e Execução', icon: PlayCircle },
+    { id: 'ocr', label: 'Tratamento (OCR)', icon: FileScan },
+    { id: 'history', label: t('sidebar.audit') || 'Auditoria e Rollback', icon: History },
+    { id: 'dashboards', label: t('sidebar.reports') || 'Relatórios e Métricas', icon: BarChart3 },
+    { id: 'support', label: t('sidebar.support') || 'Suporte e Ajuda', icon: Headphones },
   ];
 
   const { label: planTag, color: planColor } = getLicenseDetails();

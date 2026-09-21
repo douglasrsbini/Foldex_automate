@@ -12,6 +12,7 @@ import { SupportView } from './components/SupportView';
 import { OnboardingTour } from './components/OnboardingTour';
 import { SplashScreen } from './components/SplashScreen';
 import { WelcomeSetup } from './components/WelcomeSetup';
+import OcrTester from './components/OcrTester'; // ⚡ Importação do Módulo OCR
 import { LicenseInfo } from './types';
 import './i18n';
 import { 
@@ -409,6 +410,11 @@ export const App: React.FC = () => {
                   <button onClick={() => setActiveTab('account')} className="px-8 py-3 rounded-2xl text-white text-sm font-bold shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center gap-2 bg-blue-600 hover:bg-blue-700"><Lock size={16} /> Ativar Licença Corporativa</button>
                 </div>
               )
+            )}
+
+            {/* ⚡ A ROTA DO TRATAMENTO DE ARQUIVOS OCR */}
+            {activeTab === 'ocr' && (
+              <OcrTester />
             )}
 
             {activeTab === 'settings' && (

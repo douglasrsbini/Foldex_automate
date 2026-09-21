@@ -9,7 +9,7 @@ import {
   HelpCircle, RotateCcw, FolderDown, FileSpreadsheet, 
   Image as ImageIcon, Archive, X, 
   Sparkles, LayoutGrid, Rows, RefreshCw, Layers, Send, Lock, Eraser, Code, FileSearch, Info, FileText, ArrowRight, CornerDownRight, Building, User, Users, FileCheck, Receipt, Eye,
-  ArrowLeft, CheckCircle2, ChevronRight, ChevronDown, ShieldCheck
+  ArrowLeft, CheckCircle2, ChevronRight, ChevronDown, ShieldCheck, ScanText, LayoutList
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -25,6 +25,7 @@ interface RuleBuilderProps {
 type SortField = 'id' | 'name';
 type SortOrder = 'asc' | 'desc';
 type RegexPreset = 'NONE' | 'NUMBERS_ONLY' | 'EXTRACT_CPF' | 'EXTRACT_CNPJ' | 'CLEAN_SCANNER' | 'EXTRACT_DATE' | 'EXTRACT_MATRICULA' | 'CUSTOM';
+type ViewMode = 'grid' | 'list';
 
 export const RuleBuilder: React.FC<RuleBuilderProps> = ({ initialSource, accentColor, onNavigateToAccount, userNiche }) => {
   const { t } = useTranslation(); 
@@ -68,6 +69,10 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({ initialSource, accentC
   const [showAdvancedConditions, setShowAdvancedConditions] = useState(false);
   const [showAdvancedActions, setShowAdvancedActions] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    return (localStorage.getItem('foldex_rules_view') as ViewMode) || 'grid';
+  });
   
   const [aiPrompt, setAiPrompt] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -187,13 +192,19 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({ initialSource, accentC
     } else if (regexPreset === 'EXTRACT_CNPJ') {
       setRegexPattern('.*?(\\d{14}).*'); setRegexReplacement('CNPJ_$1');
     } else if (regexPreset === 'CLEAN_SCANNER') {
-      setRegexPattern('(?i)^(?:SCAN|DOC|IMG)[_\\-]?(.*)'); setRegexReplacement('$1');
+      setRegexPattern('^(?:SCAN|DOC|IMG)[_\\-]?(.*)'); setRegexReplacement('$1');
     } else if (regexPreset === 'EXTRACT_DATE') {
       setRegexPattern('.*?(\\d{2,4}[-/]\\d{2}[-/]\\d{2,4}).*'); setRegexReplacement('Data_$1');
     } else if (regexPreset === 'EXTRACT_MATRICULA') {
       setRegexPattern('.*?(\\d{5,7}).*'); setRegexReplacement('Matricula_$1');
     }
   }, [regexPreset]);
+
+  const toggleViewMode = () => {
+    const newMode = viewMode === 'grid' ? 'list' : 'grid';
+    setViewMode(newMode);
+    localStorage.setItem('foldex_rules_view', newMode);
+  };
 
   const handleFileKindChange = (val: string) => {
     setFileKind(val);
@@ -234,7 +245,8 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({ initialSource, accentC
 
     if (regexPattern && regexReplacement !== undefined) {
       try {
-        const re = new RegExp(regexPattern, 'i');
+        const flags = (regexPreset === 'NUMBERS_ONLY' || regexPreset === 'CLEAN_SCANNER') ? 'ig' : 'i';
+        const re = new RegExp(regexPattern, flags);
         name = name.replace(re, regexReplacement);
       } catch (e) {}
     }
@@ -459,11 +471,9 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({ initialSource, accentC
   };
 
   const handleSave = async () => {
-    // Se não está no último passo (Automação), vai para o próximo passo
     if (currentStep < 5) {
       nextStep();
     } else {
-      // Se está no passo de automação, salva a regra
       await handleSaveRuleToBackend();
     }
   };
@@ -495,7 +505,6 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({ initialSource, accentC
     setEnableSentinel(false);
   };
 
-  // ⚡ BLINDAGEM CONTRA FALHAS DO BANCO: null-safety total para não "crashar" o React.
   const filteredAndSortedRules = useMemo(() => {
     if (!Array.isArray(rules)) return [];
     
@@ -760,6 +769,7 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({ initialSource, accentC
                         {Array.isArray(filters) && filters.map((f, idx) => {
                           const isCategory = f?.field_name === 'Tipo de Documento (Categoria)';
                           const isDate = String(f?.field_name || '').includes('Data') || f?.field_name === 'Data de Criação';
+                          const isOcr = f?.field_name === 'Conteúdo do Documento (OCR)';
 
                           return (
                             <div key={idx} className="flex items-center gap-2 p-2 bg-slate-50 dark:bg-[#13161b] border border-slate-200 dark:border-[#343a45] rounded-xl">
@@ -774,6 +784,7 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({ initialSource, accentC
                                     } else if (e.target.value.includes('Data')) {
                                       nf[idx].operator = 'ESTÁ ENTRE (DATA/HORA)'; nf[idx].value = '';
                                     } else {
+                                      nf[idx].operator = 'CONTÉM';
                                       nf[idx].value = '';
                                     }
                                     setFilters(nf);
@@ -783,6 +794,7 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({ initialSource, accentC
                                   <option value="Extensão">Extensão (Ex: pdf)</option>
                                   <option value="Tipo de Documento (Categoria)">Categoria Pronta</option>
                                   <option value="Nome do Arquivo">Nome do Arquivo</option>
+                                  <option value="Conteúdo do Documento (OCR)">Conteúdo Interno (OCR)</option>
                                   <option value="Data de Criação">Data de Criação</option>
                                   <option value="Data de Modificação">Data de Modificação</option>
                                   <option value="Tamanho (Bytes)">Tamanho (Bytes)</option>
@@ -791,7 +803,8 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({ initialSource, accentC
                                 <select 
                                   value={f?.operator || 'CONTÉM'}
                                   onChange={(e) => { const nf = [...filters]; nf[idx].operator = e.target.value; setFilters(nf); }}
-                                  className="px-2 py-1.5 text-xs bg-white dark:bg-[#191c22] border border-slate-200 dark:border-[#2a2e37] rounded-lg text-slate-800 dark:text-white outline-none"
+                                  disabled={isOcr}
+                                  className="px-2 py-1.5 text-xs bg-white dark:bg-[#191c22] border border-slate-200 dark:border-[#2a2e37] rounded-lg text-slate-800 dark:text-white outline-none disabled:opacity-50"
                                 >
                                   {isCategory ? (
                                     <option value="É IGUAL A">É igual a</option>
@@ -801,6 +814,8 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({ initialSource, accentC
                                       <option value="MAIOR QUE">Maior que (Após)</option>
                                       <option value="MENOR QUE">Menor que (Antes)</option>
                                     </>
+                                  ) : isOcr ? (
+                                    <option value="CONTÉM">Contém a palavra</option>
                                   ) : (
                                     <>
                                       <option value="CONTÉM">Contém</option>
@@ -830,13 +845,16 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({ initialSource, accentC
                                     <input type="date" value={f?.value || ''} onChange={(e) => { const nf = [...filters]; nf[idx].value = e.target.value; setFilters(nf); }} className="w-full px-2 py-1.5 text-xs bg-white dark:bg-[#191c22] border border-slate-200 dark:border-[#2a2e37] rounded-lg text-slate-800 dark:text-white outline-none dark:[color-scheme:dark]" />
                                   )
                                 ) : (
-                                  <input 
-                                    type="text" 
-                                    placeholder="Valor da condição"
-                                    value={f?.value || ''}
-                                    onChange={(e) => { const nf = [...filters]; nf[idx].value = e.target.value; setFilters(nf); }}
-                                    className="w-full px-2 py-1.5 text-xs bg-white dark:bg-[#191c22] border border-slate-200 dark:border-[#2a2e37] rounded-lg text-slate-800 dark:text-white outline-none"
-                                  />
+                                  <div className="relative">
+                                    {isOcr && <ScanText size={12} className="absolute left-2 top-2.5 text-blue-500" />}
+                                    <input 
+                                      type="text" 
+                                      placeholder={isOcr ? "Palavra exata" : "Valor da condição"}
+                                      value={f?.value || ''}
+                                      onChange={(e) => { const nf = [...filters]; nf[idx].value = e.target.value; setFilters(nf); }}
+                                      className={`w-full py-1.5 text-xs bg-white dark:bg-[#191c22] border ${isOcr ? 'border-blue-400 pl-6 pr-2 bg-blue-50/30' : 'border-slate-200 dark:border-[#2a2e37] px-2'} rounded-lg text-slate-800 dark:text-white outline-none`}
+                                    />
+                                  </div>
                                 )}
                               </div>
                               <button 
@@ -1109,6 +1127,7 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({ initialSource, accentC
               </div>
             )}
 
+            {/* ETAPA 5: AUTOMAÇÃO */}
             {currentStep === 5 && (
               <div className="animate-in fade-in slide-in-from-right-4 duration-300 max-w-3xl mx-auto space-y-6 pt-4">
                 <div className="flex items-center gap-2 text-purple-500 mb-2">
@@ -1359,165 +1378,341 @@ export const RuleBuilder: React.FC<RuleBuilderProps> = ({ initialSource, accentC
         </div>
       )}
 
-      {/* 🌟 MODAL: MINHAS REGRAS (ATIVAÇÃO/DESATIVAÇÃO) */}
+      {/* 🌟 MODAL: MINHAS REGRAS (ATIVAÇÃO/DESATIVAÇÃO COM VIEW TOGGLE) */}
       {isRulesModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-end p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-[#191c22] w-full max-w-md h-full sm:h-auto sm:max-h-[90vh] sm:rounded-3xl p-6 border-l sm:border border-slate-200 dark:border-[#2a2e37] shadow-2xl flex flex-col animate-in slide-in-from-right-8 duration-300">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-[#2a2e37] shrink-0">
-              <div>
-                <h2 className="text-lg font-bold text-slate-800 dark:text-white">Minhas Regras</h2>
-                <p className="text-xs text-slate-500">Ligue, desligue ou edite as automações salvas.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-[#191c22] w-full max-w-4xl h-[90vh] sm:h-[85vh] rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-[#2a2e37] shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
+            
+            <div className="flex items-center justify-between pb-5 border-b border-slate-200 dark:border-[#2a2e37] shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-[#20242c] flex items-center justify-center text-blue-600 dark:text-[#94b7fa]">
+                  <ListOrdered size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-800 dark:text-white">Minhas Regras</h2>
+                  <p className="text-xs text-slate-500 mt-1">Gerencie, edite ou ative a automação Sentinel para as regras existentes.</p>
+                </div>
               </div>
-              <button onClick={() => setIsRulesModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white bg-slate-100 dark:bg-[#20242c] rounded-xl transition-colors">
-                <X size={18} />
+              <button onClick={() => setIsRulesModalOpen(false)} className="p-2.5 text-slate-400 hover:text-slate-700 dark:hover:text-white bg-slate-100 dark:bg-[#20242c] rounded-xl transition-colors">
+                <X size={20} />
               </button>
             </div>
 
-            <div className="mt-4 mb-4 relative shrink-0">
-              <Search size={14} className="absolute left-3 top-3 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Buscar regras..."
-                value={ruleSearch}
-                onChange={(e) => setRuleSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 text-xs bg-slate-50 dark:bg-[#13161b] border border-slate-200 dark:border-[#343a45] rounded-xl text-slate-800 dark:text-white outline-none focus:border-blue-500"
-              />
+            <div className="flex flex-col md:flex-row gap-4 mt-6 mb-4 shrink-0">
+              <div className="relative flex-1">
+                <Search size={16} className="absolute left-4 top-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar regras por nome, pasta ou código..."
+                  value={ruleSearch}
+                  onChange={(e) => setRuleSearch(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 text-sm bg-slate-50 dark:bg-[#13161b] border border-slate-200 dark:border-[#343a45] rounded-xl text-slate-800 dark:text-white outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+              <div className="flex gap-2">
+                <select
+                  value={actionFilter}
+                  onChange={(e) => setActionFilter(e.target.value)}
+                  className="px-4 py-3 text-sm bg-slate-50 dark:bg-[#13161b] border border-slate-200 dark:border-[#343a45] rounded-xl text-slate-700 dark:text-slate-300 font-medium outline-none focus:border-blue-500 cursor-pointer"
+                >
+                  <option value="ALL">Todas as Ações</option>
+                  <option value="MOVE">Apenas Mover</option>
+                  <option value="COPY">Apenas Copiar</option>
+                  <option value="ZIP">Apenas Compactar</option>
+                </select>
+                
+                {/* ⚡ BOTÃO DE ALTERNÂNCIA DE VIEW (GRID / LIST) */}
+                <button 
+                  onClick={toggleViewMode}
+                  className="p-3 text-slate-500 bg-slate-50 dark:bg-[#13161b] border border-slate-200 dark:border-[#343a45] rounded-xl hover:text-blue-500 hover:border-blue-400 transition-colors"
+                  title={viewMode === 'grid' ? "Mudar para modo Lista" : "Mudar para modo Grade"}
+                >
+                  {viewMode === 'grid' ? <LayoutList size={20} /> : <LayoutGrid size={20} />}
+                </button>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2">
+            {/* ⚡ CONTAINER CONDICIONAL BASEADO NO VIEWMODE */}
+            <div className={`flex-1 overflow-y-auto custom-scrollbar pr-2 content-start ${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : 'flex flex-col gap-3'}`}>
               {isLoading ? (
-                <div className="h-40 flex flex-col items-center justify-center text-xs text-slate-400 gap-2">
+                <div className="col-span-1 md:col-span-2 h-40 flex flex-col items-center justify-center text-xs text-slate-400 gap-2">
                   <RefreshCw size={24} className="animate-spin text-blue-500" />
-                  <p>Carregando regras...</p>
+                  <p>Carregando regras da base de dados...</p>
                 </div>
               ) : filteredAndSortedRules.length === 0 ? (
-                <div className="text-center py-10">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-[#20242c] text-slate-400 flex items-center justify-center mx-auto mb-4">
-                    <ListOrdered size={24} />
+                <div className="col-span-1 md:col-span-2 text-center py-16 bg-slate-50/50 dark:bg-[#13161b]/50 rounded-2xl border border-dashed border-slate-200 dark:border-[#343a45]">
+                  <div className="w-14 h-14 rounded-2xl bg-white dark:bg-[#20242c] text-slate-400 flex items-center justify-center mx-auto mb-4 shadow-sm">
+                    <ListOrdered size={28} />
                   </div>
-                  <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-1">Nenhuma regra encontrada</h3>
-                  <p className="text-xs text-slate-500">Crie uma nova regra no assistente para vê-la aqui.</p>
+                  <h3 className="text-base font-bold text-slate-800 dark:text-white mb-2">Nenhuma regra encontrada</h3>
+                  <p className="text-sm text-slate-500 max-w-sm mx-auto">Crie uma nova regra no assistente ou ajuste os filtros de busca acima.</p>
                 </div>
               ) : (
-                filteredAndSortedRules.map((r) => (
-                  <div key={r.id} className="p-4 bg-slate-50 dark:bg-[#13161b] rounded-xl border border-slate-200 dark:border-[#2a2e37] space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-800 dark:text-white line-clamp-1" title={r?.name}>{r?.name || 'Sem nome'}</h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[9px] font-mono font-bold text-slate-500 dark:text-slate-400 bg-slate-200/50 dark:bg-[#20242c] px-1.5 py-0.5 rounded">{r?.custom_code || 'AUTO'}</span>
-                          <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
-                            {Array.isArray(r?.actions) ? r.actions[0]?.action_type || 'INDEFINIDA' : 'INDEFINIDA'}
-                          </span>
+                filteredAndSortedRules.map((r) => {
+                  const actionLabel = Array.isArray(r?.actions) ? r.actions[0]?.action_type || 'INDEFINIDA' : 'INDEFINIDA';
+                  const targetPattern = Array.isArray(r?.actions) ? r.actions[0]?.target_pattern || 'Nenhum' : 'Nenhum';
+                  
+                  // ⚡ RENDERIZAÇÃO EM MODO GRID
+                  if (viewMode === 'grid') {
+                    return (
+                      <div key={r.id} className="p-5 bg-slate-50 dark:bg-[#13161b] rounded-2xl border border-slate-200 dark:border-[#2a2e37] flex flex-col justify-between hover:border-blue-300 dark:hover:border-blue-800 transition-colors group">
+                        <div className="space-y-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <h4 className="text-base font-bold text-slate-800 dark:text-white truncate" title={r?.name}>{r?.name || 'Sem nome'}</h4>
+                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 bg-white dark:bg-[#20242c] px-2 py-1 rounded-md border border-slate-200 dark:border-[#343a45] shadow-sm">
+                                  ID: {r?.custom_code || 'AUTO'}
+                                </span>
+                                <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded-md">
+                                  {actionLabel}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-1.5 shrink-0 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button 
+                                onClick={() => {
+                                  resetForm();
+                                  setEditingId(r.id || null);
+                                  setRuleName(r.name || '');
+                                  setCustomCode(r.custom_code || '');
+                                  setAutoCode(false);
+                                  setSourceDir(r.source_directory || '');
+                                  setFilters(Array.isArray(r.filters) ? r.filters : []);
+                                  
+                                  if (Array.isArray(r.actions) && r.actions.length > 0) {
+                                    const firstAction = r.actions[0];
+                                    setActionType(firstAction?.action_type || 'MOVE');
+                                    
+                                    const tPattern = firstAction?.target_pattern || '';
+                                    const sourceDirFallback = r.source_directory || '';
+                                    
+                                    if (tPattern.includes('{') || (sourceDirFallback && tPattern.includes(sourceDirFallback))) {
+                                      setFolderMode('criar');
+                                      setSubfolderPreset('custom');
+                                      let pattern = tPattern;
+                                      if (sourceDirFallback && pattern.startsWith(sourceDirFallback)) {
+                                        pattern = pattern.replace(sourceDirFallback + '/', '');
+                                      }
+                                      setCreatePattern(pattern);
+                                    } else {
+                                      setFolderMode('existente');
+                                      setSubfolderPreset('fixed');
+                                      setTargetDir(tPattern);
+                                    }
+                                    
+                                    setCleanAccents(firstAction?.clean_accents || false);
+                                    setReplaceSpaces(firstAction?.replace_spaces || false);
+                                    setCaseFormat(firstAction?.case_format || 'NONE');
+                                    setRegexPattern(firstAction?.regex_pattern || '');
+                                    setRegexReplacement(firstAction?.regex_replacement || '');
+                                    
+                                    if (firstAction?.regex_pattern) setRegexPreset('CUSTOM');
+                                    else setRegexPreset('NONE');
+                                  }
+                                  
+                                  const currentFilters = Array.isArray(r.filters) ? r.filters : [];
+                                  if (currentFilters.length === 1 && currentFilters[0]?.field_name === 'Tipo de Documento (Categoria)') {
+                                    setFileKind(currentFilters[0]?.value || '');
+                                  } else if (currentFilters.length === 1 && currentFilters[0]?.field_name === 'Extensão' && currentFilters[0]?.value === '') {
+                                    setFileKind('ALL');
+                                  } else {
+                                    setFileKind('CUSTOM');
+                                    setShowAdvancedConditions(true);
+                                  }
+
+                                  setIsRulesModalOpen(false);
+                                  setCurrentStep(0);
+                                  setFurthestStep(4); 
+                                }}
+                                className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/40 bg-white dark:bg-[#191c22] border border-slate-200 dark:border-[#343a45] rounded-lg transition-colors shadow-sm"
+                                title="Editar regra"
+                              >
+                                <Edit3 size={14} />
+                              </button>
+                              <button 
+                                onClick={() => { if(confirm("Deseja excluir esta regra?")) invoke('delete_rule', { ruleId: r.id }).then(loadRules); }} 
+                                className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/40 bg-white dark:bg-[#191c22] border border-slate-200 dark:border-[#343a45] rounded-lg transition-colors shadow-sm"
+                                title="Excluir regra"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="p-3 bg-white dark:bg-[#191c22] rounded-xl border border-slate-100 dark:border-[#2a2e37] space-y-2">
+                            <div className="flex items-start gap-2">
+                              <FolderSearch size={14} className="text-slate-400 mt-0.5 shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <span className="text-[10px] font-bold text-slate-400 block uppercase">Origem</span>
+                                <span className="text-xs text-slate-600 dark:text-slate-300 font-mono block truncate" title={r?.source_directory}>{r?.source_directory || 'Nenhuma'}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <CornerDownRight size={14} className="text-slate-400 mt-0.5 shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <span className="text-[10px] font-bold text-slate-400 block uppercase">Destino</span>
+                                <span className="text-xs text-slate-600 dark:text-slate-300 font-mono block truncate" title={targetPattern}>{targetPattern}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-[#2a2e37] flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Bot size={16} className={r?.is_sentinel_active ? "text-emerald-500" : "text-slate-400"} />
+                            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Sentinel</span>
+                          </div>
+                          <button
+                            onClick={() => handleToggleAutoPilot(r)}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm shrink-0 ${
+                              isCorePlan 
+                                ? 'bg-slate-200/50 dark:bg-[#20242c] text-slate-400 cursor-not-allowed border border-slate-200 dark:border-[#343a45]' 
+                                : r?.is_sentinel_active
+                                  ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-200 dark:hover:bg-emerald-900/60'
+                                  : 'bg-white dark:bg-[#20242c] text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-[#383840] hover:bg-slate-100 dark:hover:bg-[#27272a]'
+                            }`}
+                          >
+                            {isCorePlan ? (
+                              <>
+                                <Lock size={14} /> PRO
+                              </>
+                            ) : (
+                              <>
+                                <div className={`w-2.5 h-2.5 rounded-full ${r?.is_sentinel_active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                                {r?.is_sentinel_active ? 'Ligado' : 'Desligado'}
+                              </>
+                            )}
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0 bg-white dark:bg-[#191c22] p-1 rounded-lg border border-slate-200 dark:border-[#2a2e37]">
-                        <button 
-                          onClick={() => {
-                            resetForm();
-                            setEditingId(r.id || null);
-                            setRuleName(r.name || '');
-                            setCustomCode(r.custom_code || '');
-                            setAutoCode(false);
-                            setSourceDir(r.source_directory || '');
-                            setFilters(Array.isArray(r.filters) ? r.filters : []);
-                            
-                            // Reconstruindo o Wizard a partir dos dados do Backend de forma segura
-                            if (Array.isArray(r.actions) && r.actions.length > 0) {
-                              const firstAction = r.actions[0];
-                              setActionType(firstAction?.action_type || 'MOVE');
+                    );
+                  }
+
+                  // ⚡ RENDERIZAÇÃO EM MODO LISTA COMPACTA
+                  return (
+                    <div key={r.id} className="p-3 bg-slate-50 dark:bg-[#13161b] rounded-xl border border-slate-200 dark:border-[#2a2e37] flex items-center gap-4 hover:border-blue-300 dark:hover:border-blue-800 transition-colors group">
+                      <div className="flex-1 min-w-0 flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-lg bg-blue-100/50 dark:bg-blue-900/20 text-blue-600 dark:text-[#94b7fa] flex flex-col items-center justify-center shrink-0 border border-blue-200/50 dark:border-blue-800/30">
+                          <span className="text-[8px] font-bold uppercase">ID</span>
+                          <span className="text-xs font-mono font-bold">{r?.custom_code || 'AUTO'}</span>
+                        </div>
+                        
+                        <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div className="min-w-0">
+                            <h4 className="text-sm font-bold text-slate-800 dark:text-white truncate" title={r?.name}>{r?.name || 'Sem nome'}</h4>
+                            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded-md mt-1 inline-block">
+                              Ação: {actionLabel}
+                            </span>
+                          </div>
+                          
+                          <div className="min-w-0 hidden md:block">
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              <FolderSearch size={12} className="text-slate-400 shrink-0" />
+                              <span className="text-[10px] text-slate-500 uppercase font-bold truncate">Origem</span>
+                            </div>
+                            <span className="text-xs text-slate-600 dark:text-slate-300 font-mono block truncate" title={r?.source_directory}>{r?.source_directory || 'Nenhuma'}</span>
+                          </div>
+
+                          <div className="min-w-0 hidden lg:block">
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              <CornerDownRight size={12} className="text-slate-400 shrink-0" />
+                              <span className="text-[10px] text-slate-500 uppercase font-bold truncate">Destino</span>
+                            </div>
+                            <span className="text-xs text-slate-600 dark:text-slate-300 font-mono block truncate" title={targetPattern}>{targetPattern}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0 border-l border-slate-200 dark:border-[#2a2e37] pl-4">
+                        <button
+                          onClick={() => handleToggleAutoPilot(r)}
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm ${
+                            isCorePlan 
+                              ? 'bg-slate-200/50 dark:bg-[#20242c] text-slate-400 cursor-not-allowed border border-slate-200 dark:border-[#343a45]' 
+                              : r?.is_sentinel_active
+                                ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
+                                : 'bg-white dark:bg-[#20242c] text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-[#383840]'
+                          }`}
+                          title={isCorePlan ? "PRO" : r?.is_sentinel_active ? "Sentinel Ligado" : "Sentinel Desligado"}
+                        >
+                          {isCorePlan ? <Lock size={14} /> : <Bot size={16} className={r?.is_sentinel_active ? "animate-pulse" : ""} />}
+                        </button>
+                        
+                        <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => {
+                              resetForm();
+                              setEditingId(r.id || null);
+                              setRuleName(r.name || '');
+                              setCustomCode(r.custom_code || '');
+                              setAutoCode(false);
+                              setSourceDir(r.source_directory || '');
+                              setFilters(Array.isArray(r.filters) ? r.filters : []);
                               
-                              const targetPattern = firstAction?.target_pattern || '';
-                              const sourceDirFallback = r.source_directory || '';
-                              
-                              if (targetPattern.includes('{') || (sourceDirFallback && targetPattern.includes(sourceDirFallback))) {
-                                setFolderMode('criar');
-                                setSubfolderPreset('custom');
-                                let pattern = targetPattern;
-                                if (sourceDirFallback && pattern.startsWith(sourceDirFallback)) {
-                                  pattern = pattern.replace(sourceDirFallback + '/', '');
+                              if (Array.isArray(r.actions) && r.actions.length > 0) {
+                                const firstAction = r.actions[0];
+                                setActionType(firstAction?.action_type || 'MOVE');
+                                
+                                const tPattern = firstAction?.target_pattern || '';
+                                const sourceDirFallback = r.source_directory || '';
+                                
+                                if (tPattern.includes('{') || (sourceDirFallback && tPattern.includes(sourceDirFallback))) {
+                                  setFolderMode('criar');
+                                  setSubfolderPreset('custom');
+                                  let pattern = tPattern;
+                                  if (sourceDirFallback && pattern.startsWith(sourceDirFallback)) {
+                                    pattern = pattern.replace(sourceDirFallback + '/', '');
+                                  }
+                                  setCreatePattern(pattern);
+                                } else {
+                                  setFolderMode('existente');
+                                  setSubfolderPreset('fixed');
+                                  setTargetDir(tPattern);
                                 }
-                                setCreatePattern(pattern);
-                              } else {
-                                setFolderMode('existente');
-                                setSubfolderPreset('fixed');
-                                setTargetDir(targetPattern);
+                                
+                                setCleanAccents(firstAction?.clean_accents || false);
+                                setReplaceSpaces(firstAction?.replace_spaces || false);
+                                setCaseFormat(firstAction?.case_format || 'NONE');
+                                setRegexPattern(firstAction?.regex_pattern || '');
+                                setRegexReplacement(firstAction?.regex_replacement || '');
+                                
+                                if (firstAction?.regex_pattern) setRegexPreset('CUSTOM');
+                                else setRegexPreset('NONE');
                               }
                               
-                              setCleanAccents(firstAction?.clean_accents || false);
-                              setReplaceSpaces(firstAction?.replace_spaces || false);
-                              setCaseFormat(firstAction?.case_format || 'NONE');
-                              setRegexPattern(firstAction?.regex_pattern || '');
-                              setRegexReplacement(firstAction?.regex_replacement || '');
-                              
-                              if (firstAction?.regex_pattern) setRegexPreset('CUSTOM');
-                              else setRegexPreset('NONE');
-                            }
-                            
-                            // Define o FileKind baseado nos filtros de forma segura
-                            const currentFilters = Array.isArray(r.filters) ? r.filters : [];
-                            if (currentFilters.length === 1 && currentFilters[0]?.field_name === 'Tipo de Documento (Categoria)') {
-                              setFileKind(currentFilters[0]?.value || '');
-                            } else if (currentFilters.length === 1 && currentFilters[0]?.field_name === 'Extensão' && currentFilters[0]?.value === '') {
-                              setFileKind('ALL');
-                            } else {
-                              setFileKind('CUSTOM');
-                              setShowAdvancedConditions(true);
-                            }
+                              const currentFilters = Array.isArray(r.filters) ? r.filters : [];
+                              if (currentFilters.length === 1 && currentFilters[0]?.field_name === 'Tipo de Documento (Categoria)') {
+                                setFileKind(currentFilters[0]?.value || '');
+                              } else if (currentFilters.length === 1 && currentFilters[0]?.field_name === 'Extensão' && currentFilters[0]?.value === '') {
+                                setFileKind('ALL');
+                              } else {
+                                setFileKind('CUSTOM');
+                                setShowAdvancedConditions(true);
+                              }
 
-                            setIsRulesModalOpen(false);
-                            setCurrentStep(0);
-                            setFurthestStep(4); 
-                          }}
-                          className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
-                          title="Editar regra"
-                        >
-                          <Edit3 size={14} />
-                        </button>
-                        <button 
-                          onClick={() => { if(confirm("Deseja realmente excluir esta regra?")) invoke('delete_rule', { ruleId: r.id }).then(loadRules); }} 
-                          className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
-                          title="Excluir regra"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                              setIsRulesModalOpen(false);
+                              setCurrentStep(0);
+                              setFurthestStep(4); 
+                            }}
+                            className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/40 bg-white dark:bg-[#191c22] border border-slate-200 dark:border-[#343a45] rounded-lg transition-colors shadow-sm"
+                            title="Editar"
+                          >
+                            <Edit3 size={14} />
+                          </button>
+                          <button 
+                            onClick={() => { if(confirm("Deseja excluir esta regra?")) invoke('delete_rule', { ruleId: r.id }).then(loadRules); }} 
+                            className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/40 bg-white dark:bg-[#191c22] border border-slate-200 dark:border-[#343a45] rounded-lg transition-colors shadow-sm"
+                            title="Excluir"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                     </div>
-
-                    <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-[#2a2e37]">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-slate-500 flex items-center gap-1.5">
-                          <Folder size={12} className="text-amber-500" />
-                          <span className="truncate max-w-[120px]">{r?.source_directory || 'Nenhuma'}</span>
-                        </span>
-                      </div>
-
-                      <button
-                        onClick={() => handleToggleAutoPilot(r)}
-                        className={`px-4 py-1.5 rounded-full text-[10px] font-bold flex items-center gap-1.5 transition-all shadow-xs shrink-0 ${
-                          isCorePlan 
-                            ? 'bg-slate-200/40 dark:bg-[#20242c] text-slate-400 cursor-not-allowed border border-slate-200 dark:border-[#343a45]' 
-                            : r?.is_sentinel_active
-                              ? 'bg-emerald-100/70 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-950/70'
-                              : 'bg-slate-100 dark:bg-[#20242c] text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-[#383840] hover:bg-slate-150 dark:hover:bg-[#27272a]'
-                        }`}
-                        title={isCorePlan ? "Disponível apenas no plano Foldex Pro" : r?.is_sentinel_active ? "Clique para desligar Sentinel (automação)" : "Clique para ligar Sentinel (automação)"}
-                      >
-                        {isCorePlan ? (
-                          <>
-                            <Lock size={12} />
-                            <span>PRO</span>
-                          </>
-                        ) : (
-                          <>
-                            <div className={`w-2 h-2 rounded-full ${r?.is_sentinel_active ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-                            <span>{r?.is_sentinel_active ? 'Automático' : 'Manual'}</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

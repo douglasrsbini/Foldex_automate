@@ -11,6 +11,7 @@ use commands::rules::*;
 use commands::engine::*;
 use services::watcher::start_background_watcher;
 use commands::backup::*;
+use commands::ocr::*;
 
 fn main() {
     if let Err(e) = init_database() {
@@ -80,7 +81,11 @@ fn main() {
 
             //🤖IA Copilot Command
             generate_rule_via_ai,
-            chat_with_foldex_agent
+            chat_with_foldex_agent,
+
+            // 📄 COMANDOS DO MOTOR DE OCR (INJEÇÃO AQUI):
+            extract_ocr_text_command,
+            check_ocr_keyword_command
         ])
         .run(tauri::generate_context!())
         .expect("Erro ao executar aplicação Tauri");
