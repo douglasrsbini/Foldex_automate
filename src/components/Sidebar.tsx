@@ -11,11 +11,10 @@ import {
   ChevronLeft, 
   ChevronRight,
   Globe,
-  FileScan // ⚡ Importação do Ícone do OCR
+  FileScan 
 } from 'lucide-react';
 import { LicenseInfo } from '../types';
 import { useTranslation } from 'react-i18next';
-// ⚡ IMPORTAÇÃO BLINDADA DO ÍCONE
 import appIcon from '../assets/app-icon.png';
 
 interface SidebarProps {
@@ -54,15 +53,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return { label: 'Basic', color: 'emerald' };
   };
 
-  // ⚡ O MENU FOI ATUALIZADO AQUI (Aba "ocr" injetada)
+  // ⚡ Nomes ajustados com fallback robusto
   const navItems = [
-    { id: 'builder', label: t('sidebar.rules') || 'Construtor de Regras', icon: FolderPlus },
-    { id: 'explorer', label: t('sidebar.explorer') || 'Explorador de Pastas', icon: FolderSearch },
-    { id: 'dryrun', label: t('sidebar.simulation') || 'Simulação e Execução', icon: PlayCircle },
-    { id: 'ocr', label: 'Tratamento (OCR)', icon: FileScan },
-    { id: 'history', label: t('sidebar.audit') || 'Auditoria e Rollback', icon: History },
-    { id: 'dashboards', label: t('sidebar.reports') || 'Relatórios e Métricas', icon: BarChart3 },
-    { id: 'support', label: t('sidebar.support') || 'Suporte e Ajuda', icon: Headphones },
+    { id: 'builder', label: t('sidebar.rules', 'Construtor de Regras'), icon: FolderPlus },
+    { id: 'explorer', label: t('sidebar.explorer', 'Explorador de Pastas'), icon: FolderSearch },
+    { id: 'dryrun', label: t('sidebar.simulation', 'Simulação e Execução'), icon: PlayCircle },
+    { id: 'ocr', label: t('sidebar.doc_studio', 'Estúdio de Documentos'), icon: FileScan },
+    { id: 'history', label: t('sidebar.audit', 'Auditoria e Rollback'), icon: History },
+    { id: 'dashboards', label: t('sidebar.reports', 'Relatórios e Métricas'), icon: BarChart3 },
+    { id: 'support', label: t('sidebar.support', 'Suporte e Ajuda'), icon: Headphones },
   ];
 
   const { label: planTag, color: planColor } = getLicenseDetails();
@@ -81,8 +80,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       }`}
     >
       <div className="space-y-4">
-        
-        {/* Topo com Logo, Nome Horizontal e Licença embaixo */}
         <div className={`flex items-center ${collapsed ? 'flex-col gap-2' : 'justify-between'} px-1 py-1`}>
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 shrink-0 flex items-center justify-center">
@@ -118,7 +115,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        {/* Navegação */}
         <nav className="space-y-1 mt-3">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -146,10 +142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      {/* Inferior */}
       <div className="space-y-1 pt-3 border-t border-slate-100 dark:border-[#2e2e34]">
-        
-        {/* Seletor de Idiomas Inteligente e 100% Dark Mode */}
         <div 
           className={`flex items-center gap-3 px-3 py-2 mb-2 rounded-xl text-xs font-semibold bg-slate-50 dark:bg-[#202024] border border-slate-200 dark:border-[#2e2e34] ${collapsed ? 'justify-center px-0 border-transparent bg-transparent' : ''}`}
           title={collapsed ? 'Mudar Idioma' : undefined}
@@ -182,10 +175,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#27272a]'
           } ${collapsed ? 'justify-center px-0' : ''}`}
           style={activeTab === 'settings' ? { backgroundColor: accentColor } : {}}
-          title={collapsed ? t('sidebar.settings') : undefined}
+          title={collapsed ? t('sidebar.settings', 'Configurações') : undefined}
         >
           <Settings size={16} className="shrink-0" />
-          {!collapsed && <span className="truncate">{t('sidebar.settings')}</span>}
+          {!collapsed && <span className="truncate">{t('sidebar.settings', 'Configurações')}</span>}
         </button>
 
         <button
@@ -196,10 +189,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#27272a]'
           } ${collapsed ? 'justify-center px-0' : ''}`}
           style={activeTab === 'account' ? { backgroundColor: accentColor } : {}}
-          title={collapsed ? t('sidebar.account') : undefined}
+          title={collapsed ? t('sidebar.account', 'Conta e Licença') : undefined}
         >
           <UserCheck size={16} className="shrink-0" />
-          {!collapsed && <span className="truncate">{t('sidebar.account')}</span>}
+          {!collapsed && <span className="truncate">{t('sidebar.account', 'Conta e Licença')}</span>}
         </button>
       </div>
     </aside>

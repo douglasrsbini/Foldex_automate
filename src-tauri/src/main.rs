@@ -83,9 +83,16 @@ fn main() {
             generate_rule_via_ai,
             chat_with_foldex_agent,
 
-            // 📄 COMANDOS DO MOTOR DE OCR (INJEÇÃO AQUI):
+            // 📄 COMANDOS DO MOTOR DE OCR E PDF:
             extract_ocr_text_command,
-            check_ocr_keyword_command
+            check_ocr_keyword_command,
+            export_text_to_file_command,
+            merge_pdfs_command,
+            split_pdf_command,
+            convert_docx_to_pdf_command,
+            convert_pdf_to_docx_command,
+            print_document_command,
+            export_text_to_word_pdf_command
         ])
         .run(tauri::generate_context!())
         .expect("Erro ao executar aplicação Tauri");

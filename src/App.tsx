@@ -346,11 +346,6 @@ export const App: React.FC = () => {
   return (
     <div className="flex h-screen w-screen text-slate-900 dark:text-slate-100 overflow-hidden font-sans select-none relative bg-slate-50 dark:bg-[#0B0F14]">
       
-      {/* 🔍 DEBUG BADGE */}
-      <div className="fixed bottom-2 right-2 z-50 text-[10px] font-mono bg-black/80 text-green-300 px-2 py-1 rounded pointer-events-none">
-        isLoading:{isLoadingApp ? '1' : '0'} setup:{isSetupDone ? '1' : '0'} showUI:{showAppUI ? '1' : '0'}
-      </div>
-      
       <style>{`
         @keyframes blob {
           0% { transform: translate(0px, 0px) scale(1); }
